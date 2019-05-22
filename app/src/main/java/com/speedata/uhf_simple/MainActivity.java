@@ -111,6 +111,7 @@ public class MainActivity extends Activity {
             deviceControlSpd.PowerOnDevice();
             serialPortSpd = new SerialPortSpd();
             serialPortSpd.OpenSerial("/dev/ttyMT1", 9600);
+//            serialPortSpd.OpenSerial("/dev/ttyUSB0", 9600);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -236,13 +237,19 @@ public class MainActivity extends Activity {
                         num++;
                         uhfCardBeanList.add(new UhfCardBean(var1.epc, num, var1.rssi, var1.tid));
                         soundPool.play(soundId, 1, 1, 0, 0, 1);
-                        //获取句柄
+
                         if (serialPortSpd != null) {
+                            //获取句柄
                             fd = serialPortSpd.getFd();
-                            String epcStr = var1.epc + "\n";
+                            String epcStr = var1.epc;
                             byte[] str = epcStr.getBytes();
                             //发送数据
                             serialPortSpd.WriteSerialByte(fd, str);
+                            //发送回车
+//                            byte enter = 0x1b;
+                            byte[] enter = new byte[1];
+                            enter[0] = 0x1b;
+                            serialPortSpd.WriteSerialByte(fd, enter);
                         }
                         tvEpcTotalNum.setText(num + "");
                         uhfCardAdapter.notifyDataSetChanged();
