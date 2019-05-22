@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">uhf_simple</string>
+
+    <string name="uhf_title">UHF</string>
+    <string name="uhf_sn">序号</string>
+    <string name="uhf_tag_num">标签号</string>
+    <string name="uhf_total_num">总数：</string>
+    <string name="uhf_start_btn">开始盘点</string>
+    <string name="uhf_stop_btn">停止盘点</string>
+    <string name="uhf_clean_btn">清空</string>
+
+    <string name="DEV_OPEN_ERR">Device open failed！Software will quit！</string>
+    <string name="DIA_ALERT">警告！</string>
+    <string name="DIA_CHECK">确定</string>
+
+    <string name="dialog_title_setFreq"> 设置天线功率 0–33</string>
+    <string name="dialog_pos_set">设置</string>
+    <string name="dialog_nag_cancel">取消</string>
+
+    <string name="toast_tips1">天线功率应在0–33之间</string>
+    <string name="toast_success">设置成功</string>
+    <string name="toast_failed">设置失败</string>
+</resources>
