@@ -3,7 +3,11 @@ package com.speedata.uhf_simple;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.media.AudioManager;
 import android.media.SoundPool;
@@ -18,6 +22,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -57,6 +62,37 @@ public class MainActivity extends Activity {
     private int soundId;
     private boolean inSearch = false;
     private int num = 0;
+    private CheckBox checkBoxServer;
+    public static final String START_SCAN = "com.spd.action.start_uhf";
+    public static final String STOP_SCAN = "com.spd.action.stop_uhf";
+
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!MyApp.isOpenServer) {
+                String action = intent.getAction();
+                assert action != null;
+                switch (action) {
+                    case START_SCAN:
+                        //启动超高频扫描
+                        if (!openDev()) {
+                            if (inSearch) {
+                                return;
+                            }
+                            startInvent();
+                        }
+                        break;
+                    case STOP_SCAN:
+                        if (inSearch) {
+                            stopInvent();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,21 +102,12 @@ public class MainActivity extends Activity {
         //强制为竖屏
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
-        try {
-            iuhfService = UHFManager.getUHFService(MainActivity.this);
-        } catch (Exception e) {
-            e.printStackTrace();
-            boolean cn = "CN".equals(getApplicationContext().getResources().getConfiguration().locale.getCountry());
-            if (cn) {
-                Toast.makeText(getApplicationContext(), "模块不存在", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(getApplicationContext(), "Module does not exist", Toast.LENGTH_SHORT).show();
-            }
-            return;
-        }
+        MyApp.getInstance().setIuhfService();
+        iuhfService = MyApp.getInstance().getIuhfService();
         setContentView(R.layout.activity_main);
         initView();
         initUHF();
+        initReceive();
     }
 
     private void initView() {
@@ -92,7 +119,17 @@ public class MainActivity extends Activity {
         btnInvent = findViewById(R.id.btn_invent);
         btnInvent.setOnClickListener(new Click());
         lvEpc = findViewById(R.id.lv_epc);
+        checkBoxServer = findViewById(R.id.checkbox_server);
 
+    }
+    /**
+     * 注册广播
+     */
+    private void initReceive() {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(START_SCAN);
+        filter.addAction(STOP_SCAN);
+        registerReceiver(receiver, filter);
     }
 
     private void initUHF() {
@@ -101,6 +138,7 @@ public class MainActivity extends Activity {
                 if (openDev()) {
                     return;
                 }
+                startService(new Intent(this,MyService.class));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -262,8 +300,38 @@ public class MainActivity extends Activity {
         }
     };
 
+    private void sendUpddateService() {
+        Intent intent = new Intent();
+        intent.setAction("uhf.update");
+        this.sendBroadcast(intent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        openDev();
+        //初始化声音线程
+        initSoundPool();
+        MyApp.isOpenServer = false;
+    }
+
+    @Override
+    protected void onPause() {
+        MyApp.isOpenServer = true;
+        if (iuhfService != null) {
+            //更新回调
+            sendUpddateService();
+        }
+        super.onPause();
+    }
+
     @Override
     protected void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
         if (serialPortSpd != null) {
             fd = serialPortSpd.getFd();
             serialPortSpd.CloseSerial(fd);
@@ -273,21 +341,20 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (iuhfService != null) {
-            if (inSearch) {
-                iuhfService.inventoryStop();
-                inSearch = false;
+        if (checkBoxServer.isChecked()){
+            stopService(new Intent(this,MyService.class));
+            if (iuhfService != null) {
+                if (inSearch) {
+                    iuhfService.inventoryStop();
+                    inSearch = false;
+                }
+                iuhfService.closeDev();
             }
-            iuhfService.closeDev();
         }
         if (soundPool != null) {
             soundPool.release();
         }
-        super.onStop();
-    }
-
-    @Override
-    protected void onDestroy() {
+        unregisterReceiver(receiver);
         super.onDestroy();
     }
 }

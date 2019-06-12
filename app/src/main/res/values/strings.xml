@@ -8,6 +8,7 @@
     <string name="uhf_start_btn">开始盘点</string>
     <string name="uhf_stop_btn">停止盘点</string>
     <string name="uhf_clean_btn">清空</string>
+    <string name="uhf_check_server">退出时关闭epc焦点显示</string>
 
     <string name="DEV_OPEN_ERR">Device open failed！Software will quit！</string>
     <string name="DIA_ALERT">警告！</string>
