@@ -13,6 +13,7 @@ import android.media.AudioManager;
 import android.media.SoundPool;
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemClock;
 import android.serialport.DeviceControlSpd;
 import android.serialport.SerialPortSpd;
 import android.support.v7.app.AppCompatActivity;
@@ -283,11 +284,13 @@ public class MainActivity extends Activity {
                             byte[] str = epcStr.getBytes();
                             //发送数据
                             serialPortSpd.WriteSerialByte(fd, str);
+                            SystemClock.sleep(50);
                             //发送回车
 //                            byte enter = 0x1b;
                             byte[] enter = new byte[1];
                             enter[0] = 0x1b;
                             serialPortSpd.WriteSerialByte(fd, enter);
+                            SystemClock.sleep(50);
                         }
                         tvEpcTotalNum.setText(num + "");
                         uhfCardAdapter.notifyDataSetChanged();
