@@ -16,6 +16,12 @@ import android.util.Log;
 
 import com.speedata.libuhf.bean.SpdInventoryData;
 import com.speedata.libuhf.interfaces.OnSpdInventoryListener;
+import com.speedata.uhf_simple.adapter.UhfCardBean;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * 接受广播  触发盘点，返回EPC
@@ -35,20 +41,25 @@ public class MyService extends Service {
     private SoundPool soundPool;
     private int soundId;
     private boolean isStart = false;
+    private List<UhfCardBean> uhfCardBeanList = new ArrayList<>();
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
 
             if (MyApp.isOpenServer) {
                 String action = intent.getAction();
-
-                Log.d(TAG, "===rece===action" + action);
+                Log.d(TAG, "===rece===action===" + action);
                 assert action != null;
                 switch (action) {
                     case START_SCAN:
                         //启动超高频扫描
                         if (openDev()) {
                             if (isStart) {
+                                //停止盘点
+                                MyApp.getInstance().getIuhfService().inventoryStop();
+                                isStart = false;
+                                uhfCardBeanList.clear();
+                                cancelTimer();
                                 return;
                             }
                             MyApp.getInstance().getIuhfService().setOnInventoryListener(new OnSpdInventoryListener() {
@@ -57,22 +68,41 @@ public class MyService extends Service {
 
                                     String epc = var1.getEpc();
                                     if (!epc.isEmpty() && isStart) {
-                                        Log.d(TAG, "===inventoryStop===");
-                                        sendEpc(var1.getEpc());
-                                        //停止盘点
-                                        MyApp.getInstance().getIuhfService().inventoryStop();
-                                        isStart = false;
+                                        Log.d(TAG, "===inventoryStart===");
+                                        int j;
+                                        for (j = 0; j < uhfCardBeanList.size(); j++) {
+                                            if (var1.epc.equals(uhfCardBeanList.get(j).getEpc())) {
+                                                break;
+                                            }
+                                        }
+                                        if (j == uhfCardBeanList.size()) {
+                                            uhfCardBeanList.add(new UhfCardBean(epc , 1, var1.rssi, var1.tid));
+                                            sendEpc(epc);
+                                        }
+                                        if (!MyApp.isLoop && !MyApp.isLongDown) {
+                                            //停止盘点
+                                            MyApp.getInstance().getIuhfService().inventoryStop();
+                                            isStart = false;
+                                            uhfCardBeanList.clear();
+                                        }
                                     }
                                 }
                             });
                             MyApp.getInstance().getIuhfService().inventoryStart();
                             isStart = true;
+                            if (MyApp.isLoop) {
+                                creatTimer();
+                            }
                         }
                         break;
                     case STOP_SCAN:
-                        if (isStart) {
+                        if (MyApp.isLongDown) {
+                            //停止盘点
                             MyApp.getInstance().getIuhfService().inventoryStop();
                             isStart = false;
+                            uhfCardBeanList.clear();
+                            cancelTimer();
+                            return;
                         }
                         break;
                     case UPDATE:
@@ -111,6 +141,9 @@ public class MyService extends Service {
         return mBinder;
     }//普通服务的不同之处，onBind()方法不在打酱油，而是会返回一个实例
 
+    private Timer timer;
+    private TimerTask myTimerTask;
+    private int mTime = 0;
 
     @Override
     public void onCreate() {
@@ -118,6 +151,45 @@ public class MyService extends Service {
         Log.d(TAG, "===onCreate===");
         initReceive();
         initUHF();
+    }
+
+    private void creatTimer() {
+        if (timer == null) {
+            if (MyApp.mLoopTime.isEmpty() || MyApp.mLoopTime == null || "".equals(MyApp.mLoopTime)) {
+                MyApp.mLoopTime = "0";
+            }
+            final int loopTime = Integer.parseInt(MyApp.mLoopTime);
+            if (loopTime == 0) {
+                return;
+            }
+            timer = new Timer();
+            if (myTimerTask != null) {
+                myTimerTask.cancel();
+            }
+            mTime = 0;
+            myTimerTask = new TimerTask() {
+                @Override
+                public void run() {
+                    mTime++;
+                    if (mTime >= loopTime) {
+                        MyApp.getInstance().getIuhfService().inventoryStop();
+                        isStart = false;
+                        cancelTimer();
+                    }
+                }
+            };
+            timer.schedule(myTimerTask, 1000, 1000);
+        }
+    }
+
+    private void cancelTimer() {
+        if (myTimerTask != null) {
+            myTimerTask.cancel();
+        }
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
     }
 
     private void initUHF() {
@@ -146,6 +218,38 @@ public class MyService extends Service {
 
     private void sendEpc(String epc) {
         soundPool.play(soundId, 1, 1, 0, 0, 1);
+        switch (MyApp.mPrefix) {
+            case 0:
+                epc = "\n" + epc;
+                break;
+            case 1:
+                epc = " " + epc;
+                break;
+            case 2:
+                epc = "\r\n" + epc;
+                break;
+            case 3:
+                epc = "" + epc;
+                break;
+            default:
+                break;
+        }
+        switch (MyApp.mSuffix) {
+            case 0:
+                epc = epc + "\n";
+                break;
+            case 1:
+                epc = epc + " ";
+                break;
+            case 2:
+                epc = epc + "\r\n";
+                break;
+            case 3:
+                epc = epc + "";
+                break;
+            default:
+                break;
+        }
         Intent intent = new Intent();
         intent.setAction(ACTION_SEND_EPC);
         Bundle bundle = new Bundle();

@@ -34,6 +34,7 @@ import com.speedata.libuhf.IUHFService;
 import com.speedata.libuhf.UHFManager;
 import com.speedata.libuhf.bean.SpdInventoryData;
 import com.speedata.libuhf.interfaces.OnSpdInventoryListener;
+import com.speedata.libuhf.utils.SharedXmlUtil;
 import com.speedata.uhf_simple.adapter.UhfCardAdapter;
 import com.speedata.uhf_simple.adapter.UhfCardBean;
 
@@ -47,7 +48,7 @@ import java.util.List;
  * @author zzc
  * @date 2019/05/22
  */
-public class MainActivity extends Activity {
+public class MainActivity extends BaseActivity {
 
     private TextView tvEpcTotalNum;
     private ImageView ivUhfSet;
@@ -98,11 +99,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //全屏显示
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        //强制为竖屏
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
         MyApp.getInstance().setIuhfService();
         iuhfService = MyApp.getInstance().getIuhfService();
         setContentView(R.layout.activity_main);
@@ -123,6 +119,7 @@ public class MainActivity extends Activity {
         checkBoxServer = findViewById(R.id.checkbox_server);
 
     }
+
     /**
      * 注册广播
      */
@@ -139,7 +136,8 @@ public class MainActivity extends Activity {
                 if (openDev()) {
                     return;
                 }
-                startService(new Intent(this,MyService.class));
+                startService(new Intent(this, MyService.class));
+                SharedXmlUtil.getInstance(this).write("server", true);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -150,18 +148,14 @@ public class MainActivity extends Activity {
             deviceControlSpd.PowerOnDevice();
             serialPortSpd = new SerialPortSpd();
             serialPortSpd.OpenSerial("/dev/ttyMT1", 9600);
+            Log.d("zzc", "串口打开");
 //            serialPortSpd.OpenSerial("/dev/ttyUSB0", 9600);
+//            Toast.makeText(this, "===串口打开成功===", Toast.LENGTH_LONG).show();
         } catch (IOException e) {
+            Log.d("zzc", "===串口打开失败===");
+//            Toast.makeText(this, "===串口打开失败===", Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
-
-        //初始化回调监听
-        iuhfService.setOnInventoryListener(new OnSpdInventoryListener() {
-            @Override
-            public void getInventoryData(SpdInventoryData var1) {
-                handler.sendMessage(handler.obtainMessage(1, var1));
-            }
-        });
 
         // 加载适配器
         uhfCardAdapter = new UhfCardAdapter(this, R.layout.item_epc_list, uhfCardBeanList);
@@ -194,7 +188,8 @@ public class MainActivity extends Activity {
                     stopInvent();
                 }
             } else if (v == ivUhfSet) {
-                setAntennaPower();
+                Intent intent = new Intent(MainActivity.this, InvSetActivity.class);
+                startActivity(intent);
             }
         }
     }
@@ -216,44 +211,29 @@ public class MainActivity extends Activity {
         btnInvent.setText(R.string.uhf_start_btn);
     }
 
-    private void setAntennaPower() {
-        final EditText view1 = new EditText(this);
-        view1.setInputType(EditorInfo.TYPE_CLASS_NUMBER);
-        new AlertDialog.Builder(this).setTitle(getResources().getString(R.string.dialog_title_setFreq)).setView(view1).setPositiveButton(getResources().getString(R.string.dialog_pos_set), new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                int num = Integer.parseInt(view1.getText().toString());
-                if (num > 33) {
-                    Toast.makeText(MainActivity.this, getResources().getString(R.string.toast_tips1), Toast.LENGTH_LONG).show();
-                    return;
-                }
-                int result = iuhfService.setAntennaPower(num);
-                if (result == 0) {
-                    Toast.makeText(MainActivity.this, getResources().getString(R.string.toast_success), Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(MainActivity.this, getResources().getString(R.string.toast_failed), Toast.LENGTH_LONG).show();
-                }
-            }
-        }).setNegativeButton(getResources().getString(R.string.dialog_nag_cancel), null).show();
-    }
-
     /**
      * 上电开串口
      *
      * @return 成功返回false
      */
     private boolean openDev() {
-        if (iuhfService.openDev() != 0) {
-            new AlertDialog.Builder(this).setTitle(R.string.DIA_ALERT).setMessage(R.string.DEV_OPEN_ERR).setPositiveButton(R.string.DIA_CHECK, new DialogInterface.OnClickListener() {
+        if (!MyApp.isOpenDev) {
+            if (iuhfService.openDev() != 0) {
+                Toast.makeText(this, "Open serialport failed", Toast.LENGTH_SHORT).show();
+                new AlertDialog.Builder(this).setTitle(R.string.DIA_ALERT).setMessage(R.string.DEV_OPEN_ERR).setPositiveButton(R.string.DIA_CHECK, new DialogInterface.OnClickListener() {
 
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    // TODO Auto-generated method stub
-                    finish();
-                }
-            }).show();
-            return true;
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finish();
+                    }
+                }).show();
+                MyApp.isOpenDev = false;
+                return true;
+            } else {
+                Log.d("UHFService", "上电成功");
+            }
         }
+        MyApp.isOpenDev = true;
         return false;
     }
 
@@ -268,33 +248,40 @@ public class MainActivity extends Activity {
                     int j;
                     for (j = 0; j < uhfCardBeanList.size(); j++) {
                         if (var1.epc.equals(uhfCardBeanList.get(j).getEpc())) {
-                            uhfCardBeanList.get(j).setRssi(var1.rssi);
                             break;
                         }
                     }
                     if (j == uhfCardBeanList.size()) {
                         num++;
                         uhfCardBeanList.add(new UhfCardBean(var1.epc, num, var1.rssi, var1.tid));
+                        uhfCardAdapter.notifyDataSetChanged();
+                        tvEpcTotalNum.setText(num + "");
                         soundPool.play(soundId, 1, 1, 0, 0, 1);
 
                         if (serialPortSpd != null) {
                             //获取句柄
                             fd = serialPortSpd.getFd();
+//                            byte[] capsLock = new byte[1];
+//                            capsLock[0] = 0x0d;
+//                            serialPortSpd.WriteSerialByte(fd, capsLock);
+//                            SystemClock.sleep(50);
                             String epcStr = var1.epc;
                             byte[] str = epcStr.getBytes();
                             //发送数据
                             serialPortSpd.WriteSerialByte(fd, str);
-                            SystemClock.sleep(50);
+                            SystemClock.sleep(100);
                             //发送回车
 //                            byte enter = 0x1b;
                             byte[] enter = new byte[1];
                             enter[0] = 0x1b;
                             serialPortSpd.WriteSerialByte(fd, enter);
                             SystemClock.sleep(50);
+//                            serialPortSpd.WriteSerialByte(fd, capsLock);
+//                            SystemClock.sleep(50);
                         }
-                        tvEpcTotalNum.setText(num + "");
-                        uhfCardAdapter.notifyDataSetChanged();
                     }
+
+
                     break;
                 default:
                     break;
@@ -312,10 +299,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        MyApp.isOpenServer = false;
         openDev();
         //初始化声音线程
         initSoundPool();
-        MyApp.isOpenServer = false;
+        //初始化回调监听
+        iuhfService.setOnInventoryListener(new OnSpdInventoryListener() {
+            @Override
+            public void getInventoryData(SpdInventoryData var1) {
+                handler.sendMessage(handler.obtainMessage(1, var1));
+            }
+        });
     }
 
     @Override
@@ -340,12 +334,15 @@ public class MainActivity extends Activity {
             serialPortSpd.CloseSerial(fd);
         }
         try {
-            deviceControlSpd.PowerOffDevice();
+            if (deviceControlSpd != null) {
+                deviceControlSpd.PowerOffDevice();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (checkBoxServer.isChecked()){
-            stopService(new Intent(this,MyService.class));
+        if (checkBoxServer.isChecked()) {
+            stopService(new Intent(this, MyService.class));
+            SharedXmlUtil.getInstance(this).write("server", false);
             if (iuhfService != null) {
                 if (inSearch) {
                     iuhfService.inventoryStop();

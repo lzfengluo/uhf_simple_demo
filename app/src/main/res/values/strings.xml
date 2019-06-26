@@ -21,4 +21,38 @@
     <string name="toast_tips1">天线功率应在0–33之间</string>
     <string name="toast_success">设置成功</string>
     <string name="toast_failed">设置失败</string>
+
+    <string name="Set_Btn_set">设置</string>
+    <string name="btn_bk">返回</string>
+
+    <string name="set_freq_item1">当前状态为定频</string>
+    <string name="set_etpower">0关天线1开天线</string>
+    <string name="set_failed">设置失败</string>
+    <string name="set_freq">设置定频</string>
+    <string name="set_freq_hint">选择合适的定频</string>
+    <string name="set_s2">通话项</string>
+    <string name="set_s2_hint">选择</string>
+    <string name="antenna_p_hint">填写功率大小</string>
+    <string name="set_inv">盘点内容</string>
+    <string name="set_freq_point">设置频点</string>
+    <string name="set_freq_point_hint">设置频点大小</string>
+    <string name="set_addr">地址</string>
+    <string name="set_addr_hint">填写地址位置</string>
+    <string name="set_count">块数</string>
+    <string name="set_count_hint">填写块数信息</string>
+    <string name="btn_ok">确认</string>
+    <string name="set_server_prefix">前缀</string>
+    <string name="set_server_suffix">后缀</string>
+    <string name="set_long_down">长按连扫</string>
+    <string name="set_server_loop">是否循环</string>
+    <string name="set_server_loop_time">循环超时时间</string>
+    <string name="set_loop_s">秒</string>
+    <string name="antenna_p">天线功率</string>
+    <string name="check_close_server">关闭超高频后台服务</string>
+    <string name="Cancle_btn">取消</string>
+    <string name="set_success">设置成功</string>
+    <string name="toast1">参数不能为空</string>
+    <string name="power_range">天线功率值范围为0 ~ 33</string>
+    <string name="set_power_fail">设置天线功率失败</string>
+    <string name="set_power_ok">设置天线功率成功</string>
 </resources>
