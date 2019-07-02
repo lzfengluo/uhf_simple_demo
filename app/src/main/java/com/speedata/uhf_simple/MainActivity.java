@@ -261,23 +261,25 @@ public class MainActivity extends BaseActivity {
                         if (serialPortSpd != null) {
                             //获取句柄
                             fd = serialPortSpd.getFd();
-//                            byte[] capsLock = new byte[1];
-//                            capsLock[0] = 0x0d;
-//                            serialPortSpd.WriteSerialByte(fd, capsLock);
-//                            SystemClock.sleep(50);
-                            String epcStr = var1.epc;
+                            String epcStr = var1.epc + " ";
+                            byte[] n = new byte[]{0x1b};
                             byte[] str = epcStr.getBytes();
+                            byte[] sendStr = new byte[str.length + n.length];
+                            System.arraycopy(str, 0, sendStr, 0, str.length);
+                            System.arraycopy(n, 0, sendStr, str.length, n.length);
                             //发送数据
                             serialPortSpd.WriteSerialByte(fd, str);
-                            SystemClock.sleep(100);
+//                            serialPortSpd.WriteSerialByte(fd, str);
+                            SystemClock.sleep(150);
                             //发送回车
 //                            byte enter = 0x1b;
-                            byte[] enter = new byte[1];
-                            enter[0] = 0x1b;
+                            byte[] enter = new byte[]{0x1b};
                             serialPortSpd.WriteSerialByte(fd, enter);
                             SystemClock.sleep(50);
-//                            serialPortSpd.WriteSerialByte(fd, capsLock);
-//                            SystemClock.sleep(50);
+//                            if (0x30 > str[0] || str[0] > 0x39) {
+//                                serialPortSpd.WriteSerialByte(fd, enter);
+//                                SystemClock.sleep(50);
+//                            }
                         }
                     }
 
