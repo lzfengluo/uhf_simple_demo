@@ -3,6 +3,8 @@
     package="com.speedata.uhf_simple"
     android:sharedUserId="android.uid.system">
 
+    <uses-permission android:name="android.permission.RECEIVE_USER_PRESENT"/>
+
     <application
         android:name=".MyApp"
         android:allowBackup="true"
